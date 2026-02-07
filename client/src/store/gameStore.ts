@@ -76,3 +76,8 @@ export const useAmHost = () => {
     const me = publicState?.players.find(p => p.id === playerId);
     return me?.isHost ?? false;
 };
+
+export const useCanCallLiar = () => {
+    const privateState = useGameStore((state) => state.privateState);
+    return privateState?.canCallLiar ?? false;
+};

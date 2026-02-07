@@ -149,6 +149,23 @@ export class GameRoom {
 
     // ============ Game Flow ============
 
+    resetGame(): void {
+        this.phase = 'LOBBY';
+        this.currentBid = null;
+        this.lastRoundResult = null;
+        this.roundNumber = 0;
+
+        // Reset players
+        for (const player of this.players.values()) {
+            player.diceCount = this.settings.startingDiceCount;
+            player.dice = [];
+            player.isEliminated = false;
+        }
+
+        // Randomize starting player
+        this.activePlayerIndex = Math.floor(Math.random() * this.playerOrder.length);
+    }
+
     startGame(): { success: boolean; error?: string } {
         if (this.phase !== 'LOBBY') {
             return { success: false, error: 'Game already started' };
@@ -216,9 +233,8 @@ export class GameRoom {
             return { success: false, error: 'No bid to challenge' };
         }
 
-        if (!this.isActivePlayer(challengerId)) {
-            return { success: false, error: 'Not your turn' };
-        }
+        // Removed isActivePlayer check to allow anyone to call liar
+
 
         // Can't call liar on yourself
         if (this.currentBid.playerId === challengerId) {
@@ -383,7 +399,8 @@ export class GameRoom {
         const player = this.players.get(playerId);
         const isMyTurn = this.getActivePlayerId() === playerId;
         const canBid = this.phase === 'BIDDING' && isMyTurn;
-        const canCallLiar = canBid && this.currentBid !== null && this.currentBid.playerId !== playerId;
+        // Allow calling liar if it's bidding phase, there's a bid, and you didn't make the bid
+        const canCallLiar = this.phase === 'BIDDING' && this.currentBid !== null && this.currentBid.playerId !== playerId;
 
         return {
             myDice: player?.dice || [],

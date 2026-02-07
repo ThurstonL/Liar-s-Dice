@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import confetti from 'canvas-confetti';
-import { useGameStore, useGamePhase, useMyDice, useCurrentBid, usePlayers, useIsMyTurn, useAmHost } from '../store/gameStore';
+import { useGameStore, useGamePhase, useMyDice, useCurrentBid, usePlayers, useIsMyTurn, useAmHost, useCanCallLiar } from '../store/gameStore';
 import { useSocket } from '../hooks/useSocket';
 import { PlayerCard } from './PlayerCard';
 import { DiceDisplay } from './DiceDisplay';
@@ -17,7 +17,8 @@ export function GameScreen() {
     const players = usePlayers();
     const isMyTurn = useIsMyTurn();
     const isHost = useAmHost();
-    const { leaveRoom, restartGame } = useSocket();
+    const canCallLiar = useCanCallLiar();
+    const { leaveRoom, restartGame, callLiar } = useSocket();
 
     // Sound effects
     useEffect(() => {
@@ -154,6 +155,19 @@ export function GameScreen() {
             {phase === 'BIDDING' && isMyTurn && (
                 <div className="mt-auto animate-in slide-in-from-bottom-10">
                     <BidInput />
+                </div>
+            )}
+
+            {/* Liar button for non-active players */}
+            {phase === 'BIDDING' && !isMyTurn && canCallLiar && (
+                <div className="mt-auto animate-in slide-in-from-bottom-10">
+                    <button
+                        onClick={callLiar}
+                        className="btn-danger w-full py-4 text-xl font-bold shadow-xl flex items-center justify-center gap-2"
+                    >
+                        <span>🎭</span> CALL LIAR!
+                    </button>
+                    <p className="text-center text-xs text-white/30 mt-2">Anyone can call Liar!</p>
                 </div>
             )}
         </div>

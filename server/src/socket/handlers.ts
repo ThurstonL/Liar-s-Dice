@@ -139,6 +139,26 @@ export function setupSocketHandlers(io: TypedServer): void {
             console.log(`🎮 Game started in room ${room.roomCode}`);
         });
 
+        // ============ Restart Game ============
+        socket.on('RESTART_GAME', () => {
+            const roomId = roomManager.getSocketRoom(socket.id);
+            const playerId = roomManager.getSocketPlayer(socket.id);
+            if (!roomId || !playerId) return;
+
+            const room = roomManager.getRoomById(roomId);
+            if (!room) return;
+
+            // Only host can restart
+            if (!room.isHost(playerId)) {
+                socket.emit('ERROR', { message: 'Only the host can restart the game', code: 'NOT_HOST' });
+                return;
+            }
+
+            room.resetGame();
+            broadcastRoomState(io, roomId);
+            console.log(`🔄 Game restarted in room ${room.roomCode}`);
+        });
+
         // ============ Make Bid ============
         socket.on('MAKE_BID', ({ quantity, faceValue }) => {
             const roomId = roomManager.getSocketRoom(socket.id);

@@ -67,6 +67,7 @@ export interface ClientToServerEvents {
     START_GAME: () => void;
     MAKE_BID: (data: { quantity: number; faceValue: number }) => void;
     CALL_LIAR: () => void;
+    RESTART_GAME: () => void;
     LEAVE_ROOM: () => void;
 }
 
