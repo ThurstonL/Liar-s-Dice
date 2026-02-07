@@ -1,0 +1,131 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'Inter', sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #0f172a;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* Dice face styling */
+.dice-face {
+  @apply w-12 h-12 bg-white rounded-lg flex items-center justify-center font-bold text-xl shadow-lg;
+  background: linear-gradient(145deg, #ffffff, #f0f0f0);
+}
+
+.dice-dot {
+  @apply w-2.5 h-2.5 bg-slate-900 rounded-full;
+}
+
+/* Glass morphism card */
+.glass-card {
+  @apply bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 shadow-xl;
+}
+
+/* Gradient button */
+.btn-primary {
+  @apply px-6 py-3 rounded-xl font-semibold text-white transition-all duration-200;
+  @apply bg-gradient-to-r from-amber-500 to-orange-600;
+  @apply hover:from-amber-400 hover:to-orange-500;
+  @apply hover:shadow-lg hover:shadow-amber-500/30;
+  @apply active:scale-95;
+  @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100;
+}
+
+.btn-secondary {
+  @apply px-6 py-3 rounded-xl font-semibold text-white transition-all duration-200;
+  @apply bg-white/10 border border-white/20;
+  @apply hover:bg-white/20;
+  @apply active:scale-95;
+}
+
+.btn-danger {
+  @apply px-6 py-3 rounded-xl font-semibold text-white transition-all duration-200;
+  @apply bg-gradient-to-r from-red-500 to-rose-600;
+  @apply hover:from-red-400 hover:to-rose-500;
+  @apply hover:shadow-lg hover:shadow-red-500/30;
+  @apply active:scale-95;
+}
+
+/* Input styling */
+.input-field {
+  @apply w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20;
+  @apply text-white placeholder-white/50;
+  @apply focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500;
+  @apply transition-all duration-200;
+}
+
+/* Active player glow */
+.active-player {
+  @apply ring-2 ring-amber-500 ring-offset-2 ring-offset-slate-900;
+  animation: pulseGlow 2s infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(245, 158, 11, 0.6);
+  }
+}
+
+/* Dice reveal animation */
+.dice-reveal {
+  animation: diceReveal 0.5s ease-out forwards;
+}
+
+@keyframes diceReveal {
+  0% {
+    transform: scale(0) rotateY(180deg);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1) rotateY(0);
+    opacity: 1;
+  }
+}
+
+/* Page transitions */
+.page-enter {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms, transform 300ms;
+}
