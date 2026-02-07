@@ -139,6 +139,10 @@ export function useSocket() {
         localStorage.removeItem(PLAYER_ID_KEY);
     }, []);
 
+    const restartGame = useCallback(() => {
+        socketRef.current?.emit('RESTART_GAME');
+    }, []);
+
     return {
         createRoom,
         joinRoom,
@@ -147,5 +151,6 @@ export function useSocket() {
         makeBid,
         callLiar,
         leaveRoom,
+        restartGame,
     };
 }
