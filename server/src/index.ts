@@ -8,13 +8,26 @@ import type { ClientToServerEvents, ServerToClientEvents } from '../../shared/ty
 const app = express();
 const httpServer = createServer(app);
 
-// Configure CORS for development
-const allowedOrigins = process.env.CLIENT_URL || 'http://localhost:5173';
+// Configure CORS for development to allow local network access
+const corsOptions = {
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
 
-app.use(cors({
-    origin: allowedOrigins,
+        // Allow localhost and local network IPs
+        if (origin.startsWith('http://localhost') ||
+            origin.startsWith('http://127.0.0.1') ||
+            origin.startsWith('http://192.168.') ||
+            origin.startsWith('http://10.')) {
+            return callback(null, true);
+        }
+
+        return callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
-}));
+};
+
+app.use(cors(corsOptions));
 
 app.use(express.json());
 
@@ -26,7 +39,7 @@ app.get('/health', (_req, res) => {
 // Socket.IO server with typed events
 const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
     cors: {
-        origin: allowedOrigins,
+        origin: corsOptions.origin,
         methods: ['GET', 'POST'],
         credentials: true,
     },

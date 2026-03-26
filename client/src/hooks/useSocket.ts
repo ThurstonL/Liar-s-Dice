@@ -15,6 +15,7 @@ let socketInstance: TypedSocket | null = null;
 
 function getSocket(): TypedSocket {
     if (!socketInstance) {
+        console.log('🔌 Attempting to connect to:', SOCKET_URL);
         socketInstance = io(SOCKET_URL, {
             autoConnect: true,
             reconnection: true,
