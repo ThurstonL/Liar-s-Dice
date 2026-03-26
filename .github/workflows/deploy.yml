@@ -6,17 +6,17 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    # Runs directly on your Mac Mini — no inbound SSH needed
+    runs-on: self-hosted
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.MAC_HOST }}
-          username: ${{ secrets.MAC_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            cd ${{ secrets.DEPLOY_PATH }}
-            git pull origin main
-            npm install
-            npm run build
-            pm2 restart liars-dice
+      - name: Pull latest code
+        run: git pull origin main
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build
+        run: npm run build
+
+      - name: Restart server
+        run: pm2 restart liars-dice

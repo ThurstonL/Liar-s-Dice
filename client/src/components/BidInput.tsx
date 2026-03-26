@@ -1,17 +1,15 @@
 import { useState } from 'react';
-import { useGameStore, useMyDice, useCurrentBid, useSettings } from '../store/gameStore';
+import { useGameStore, useCurrentBid, useSettings } from '../store/gameStore';
 import { useSocket } from '../hooks/useSocket';
 import { DieSelect } from './DiceDisplay';
 
 export function BidInput() {
     const currentBid = useCurrentBid();
-    const myDice = useMyDice();
     const settings = useSettings();
     const privateState = useGameStore((state) => state.privateState);
     const { makeBid, callLiar } = useSocket();
 
     // Initialize to minimum valid bid
-    const minQuantity = currentBid ? currentBid.quantity : 1;
     const minFaceValue = currentBid ? currentBid.faceValue + 1 : 1;
 
     const [quantity, setQuantity] = useState(currentBid ? currentBid.quantity : 1);

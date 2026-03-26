@@ -102,7 +102,7 @@ const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
 
 And add to `client/.env.production`:
 ```
-VITE_SERVER_URL=https://liarsdice.yourdomain.com
+VITE_SOCKET_URL=https://liarsdice.yourdomain.com
 ```
 
 ---
@@ -150,65 +150,35 @@ The tunnel now runs automatically at Mac Mini startup.
 
 ---
 
-## Step 5: Set Up GitHub Actions Auto-Deploy
+## Step 5: Set Up GitHub Actions Auto-Deploy (Self-Hosted Runner)
 
-### 5.1 Enable SSH on Mac Mini
-System Settings → General → Sharing → Remote Login → Enable
+Instead of SSH-ing from GitHub into your home network (which doesn't work with a local IP),
+we register the Mac Mini as a **self-hosted GitHub Runner**. The runner polls GitHub outbound —
+no inbound ports required, and it works perfectly through Cloudflare Tunnel.
 
-### 5.2 Generate SSH key for GitHub Actions (on any machine)
+### 5.1 Register the Mac Mini as a self-hosted runner
+
+1. Go to your repo on GitHub → **Settings → Actions → Runners → New self-hosted runner**
+2. Select **macOS** as the OS
+3. Follow the exact commands GitHub shows you to download and configure the runner agent
+4. When asked for a runner name, use something like `mac-mini`
+5. Start the runner:
 ```bash
-ssh-keygen -t ed25519 -C "github-actions" -f ~/.ssh/github_actions
+./run.sh
 ```
-Add the **public key** (`github_actions.pub`) to Mac Mini's `~/.ssh/authorized_keys`:
+
+### 5.2 Install the runner as a persistent service (auto-starts on boot)
 ```bash
-cat ~/.ssh/github_actions.pub >> ~/.ssh/authorized_keys
+sudo ./svc.sh install
+sudo ./svc.sh start
 ```
 
-### 5.3 Add secrets to GitHub
-Go to your repo → Settings → Secrets and variables → Actions → New secret:
+### 5.3 The workflow file is already in the repo
+`.github/workflows/deploy.yml` uses `runs-on: self-hosted`, so every push to `main`
+will automatically trigger a deploy on your Mac Mini — no secrets needed.
 
-| Secret Name | Value |
-|---|---|
-| `MAC_HOST` | Your Mac Mini's local IP (e.g. `192.168.1.50`) or Cloudflare Access hostname |
-| `MAC_USER` | Your Mac Mini username |
-| `SSH_PRIVATE_KEY` | Contents of `~/.ssh/github_actions` (private key) |
-| `DEPLOY_PATH` | Full path to the repo on Mac Mini (e.g. `/Users/yourname/Liar-s-Dice`) |
-
-### 5.4 Create the GitHub Actions workflow
-The file `.github/workflows/deploy.yml` is already set up in this repo (see below).
-
----
-
-## Step 6: Add the Workflow File
-
-Create `.github/workflows/deploy.yml` in the repo:
-
-```yaml
-name: Deploy to Mac Mini
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.MAC_HOST }}
-          username: ${{ secrets.MAC_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            cd ${{ secrets.DEPLOY_PATH }}
-            git pull origin main
-            npm install
-            npm run build
-            pm2 restart liars-dice
-```
-
-Commit and push this file, and every future push to `main` will auto-deploy.
+> **Note**: The runner must be running and the repo must be cloned at the same path
+> where you ran `./config.sh`. The workflow does `git pull` in that directory.
 
 ---
 

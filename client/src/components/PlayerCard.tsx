@@ -1,4 +1,4 @@
-import type { PublicPlayer } from '../../../../shared/types';
+import type { PublicPlayer } from '../../../shared/types';
 
 interface PlayerCardProps {
     player: PublicPlayer;

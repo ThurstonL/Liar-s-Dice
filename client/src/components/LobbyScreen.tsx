@@ -1,4 +1,4 @@
-import { useGameStore, useAmHost, usePlayers, useSettings } from '../store/gameStore';
+import { useGameStore, useAmHost, usePlayers } from '../store/gameStore';
 import { useSocket } from '../hooks/useSocket';
 import { GameSettingsPanel } from './GameSettingsPanel';
 import { PlayerCard } from './PlayerCard';
@@ -8,7 +8,6 @@ export function LobbyScreen() {
     const playerId = useGameStore((state) => state.playerId);
     const amHost = useAmHost();
     const players = usePlayers();
-    const settings = useSettings();
     const { startGame, leaveRoom } = useSocket();
 
     if (!publicState) return null;
