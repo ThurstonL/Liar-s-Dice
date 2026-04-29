@@ -1,10 +1,15 @@
-import { useGameStore, usePlayers } from '../store/gameStore';
+import { useGameStore, usePlayers, useAmHost } from '../store/gameStore';
 import { DiceDisplay } from './DiceDisplay';
 
-export function RevealScreen() {
+interface RevealScreenProps {
+    onContinueToNextRound: () => void;
+}
+
+export function RevealScreen({ onContinueToNextRound }: RevealScreenProps) {
     const publicState = useGameStore((state) => state.publicState);
     const playerId = useGameStore((state) => state.playerId);
     const players = usePlayers();
+    const isHost = useAmHost();
 
     if (!publicState?.lastRoundResult) return null;
 
@@ -80,6 +85,26 @@ export function RevealScreen() {
                     </span>
                     {' '}loses a die! 🎲
                 </p>
+            </div>
+
+            <div className="text-center">
+                {isHost ? (
+                    <>
+                        <button
+                            onClick={onContinueToNextRound}
+                            className="btn-primary w-full py-3 text-lg"
+                        >
+                            Start Next Round
+                        </button>
+                        <p className="text-xs text-white/40 mt-2">
+                            Everyone will stay on this reveal until you continue.
+                        </p>
+                    </>
+                ) : (
+                    <p className="text-sm text-white/50">
+                        Waiting for the host to start the next round.
+                    </p>
+                )}
             </div>
         </div>
     );

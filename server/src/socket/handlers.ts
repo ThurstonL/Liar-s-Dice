@@ -1,9 +1,111 @@
 import type { Server, Socket } from 'socket.io';
-import type { ClientToServerEvents, ServerToClientEvents, GameSettings } from '../../../shared/types.js';
+import type { ClientToServerEvents, ServerToClientEvents, GameSettings } from '@liars-dice/shared/types.js';
 import { roomManager } from '../engine/RoomManager.js';
 
 type TypedServer = Server<ClientToServerEvents, ServerToClientEvents>;
 type TypedSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
+
+type RateLimitScope = 'socket' | 'ip';
+
+interface RateLimitRule {
+    windowMs: number;
+    maxEvents: number;
+    message: string;
+    code: string;
+    scope?: RateLimitScope;
+}
+
+interface RateLimitEntry {
+    count: number;
+    windowStart: number;
+}
+
+const socketRateLimitStore = new Map<string, RateLimitEntry>();
+const ipRateLimitStore = new Map<string, RateLimitEntry>();
+
+const RATE_LIMIT_RULES: Record<string, RateLimitRule> = {
+    CREATE_ROOM: {
+        windowMs: 60_000,
+        maxEvents: 6,
+        message: 'You are creating rooms too quickly. Please wait a moment.',
+        code: 'RATE_LIMITED',
+        scope: 'ip',
+    },
+    JOIN_ROOM: {
+        windowMs: 20_000,
+        maxEvents: 12,
+        message: 'You are trying to join rooms too quickly. Please wait a moment.',
+        code: 'RATE_LIMITED',
+        scope: 'ip',
+    },
+    UPDATE_SETTINGS: {
+        windowMs: 5_000,
+        maxEvents: 10,
+        message: 'Settings are being changed too quickly. Please slow down.',
+        code: 'RATE_LIMITED',
+    },
+    START_GAME: {
+        windowMs: 10_000,
+        maxEvents: 3,
+        message: 'Please wait a moment before trying to start again.',
+        code: 'RATE_LIMITED',
+    },
+    RESTART_GAME: {
+        windowMs: 10_000,
+        maxEvents: 3,
+        message: 'Please wait a moment before trying to restart again.',
+        code: 'RATE_LIMITED',
+    },
+    MAKE_BID: {
+        windowMs: 3_000,
+        maxEvents: 8,
+        message: 'You are sending bids too quickly. Please slow down.',
+        code: 'RATE_LIMITED',
+    },
+    CALL_LIAR: {
+        windowMs: 3_000,
+        maxEvents: 5,
+        message: 'You are challenging too quickly. Please slow down.',
+        code: 'RATE_LIMITED',
+    },
+    CONTINUE_TO_NEXT_ROUND: {
+        windowMs: 10_000,
+        maxEvents: 4,
+        message: 'Please wait a moment before continuing again.',
+        code: 'RATE_LIMITED',
+    },
+};
+
+function getClientIp(socket: TypedSocket): string {
+    const forwardedFor = socket.handshake.headers['x-forwarded-for'];
+    if (typeof forwardedFor === 'string' && forwardedFor.length > 0) {
+        return forwardedFor.split(',')[0].trim();
+    }
+
+    return socket.handshake.address || socket.id;
+}
+
+function checkRateLimit(socket: TypedSocket, eventName: keyof typeof RATE_LIMIT_RULES): boolean {
+    const rule = RATE_LIMIT_RULES[eventName];
+    const now = Date.now();
+    const scope = rule.scope ?? 'socket';
+    const key = scope === 'ip' ? getClientIp(socket) : socket.id;
+    const store = scope === 'ip' ? ipRateLimitStore : socketRateLimitStore;
+    const existing = store.get(`${eventName}:${key}`);
+
+    if (!existing || now - existing.windowStart >= rule.windowMs) {
+        store.set(`${eventName}:${key}`, { count: 1, windowStart: now });
+        return true;
+    }
+
+    if (existing.count >= rule.maxEvents) {
+        socket.emit('ERROR', { message: rule.message, code: rule.code });
+        return false;
+    }
+
+    existing.count++;
+    return true;
+}
 
 /**
  * Broadcast updated state to all players in a room
@@ -34,6 +136,8 @@ export function setupSocketHandlers(io: TypedServer): void {
 
         // ============ Room Creation ============
         socket.on('CREATE_ROOM', ({ playerName }) => {
+            if (!checkRateLimit(socket, 'CREATE_ROOM')) return;
+
             if (!playerName || playerName.trim().length === 0) {
                 socket.emit('ERROR', { message: 'Player name is required', code: 'INVALID_NAME' });
                 return;
@@ -58,6 +162,8 @@ export function setupSocketHandlers(io: TypedServer): void {
 
         // ============ Room Joining ============
         socket.on('JOIN_ROOM', ({ roomCode, playerName }) => {
+            if (!checkRateLimit(socket, 'JOIN_ROOM')) return;
+
             if (!playerName || playerName.trim().length === 0) {
                 socket.emit('ERROR', { message: 'Player name is required', code: 'INVALID_NAME' });
                 return;
@@ -97,6 +203,8 @@ export function setupSocketHandlers(io: TypedServer): void {
 
         // ============ Settings Update ============
         socket.on('UPDATE_SETTINGS', (settings: Partial<GameSettings>) => {
+            if (!checkRateLimit(socket, 'UPDATE_SETTINGS')) return;
+
             const roomId = roomManager.getSocketRoom(socket.id);
             const playerId = roomManager.getSocketPlayer(socket.id);
             if (!roomId || !playerId) return;
@@ -116,6 +224,8 @@ export function setupSocketHandlers(io: TypedServer): void {
 
         // ============ Start Game ============
         socket.on('START_GAME', () => {
+            if (!checkRateLimit(socket, 'START_GAME')) return;
+
             const roomId = roomManager.getSocketRoom(socket.id);
             const playerId = roomManager.getSocketPlayer(socket.id);
             if (!roomId || !playerId) return;
@@ -141,6 +251,8 @@ export function setupSocketHandlers(io: TypedServer): void {
 
         // ============ Restart Game ============
         socket.on('RESTART_GAME', () => {
+            if (!checkRateLimit(socket, 'RESTART_GAME')) return;
+
             const roomId = roomManager.getSocketRoom(socket.id);
             const playerId = roomManager.getSocketPlayer(socket.id);
             if (!roomId || !playerId) return;
@@ -161,6 +273,8 @@ export function setupSocketHandlers(io: TypedServer): void {
 
         // ============ Make Bid ============
         socket.on('MAKE_BID', ({ quantity, faceValue }) => {
+            if (!checkRateLimit(socket, 'MAKE_BID')) return;
+
             const roomId = roomManager.getSocketRoom(socket.id);
             const playerId = roomManager.getSocketPlayer(socket.id);
             if (!roomId || !playerId) return;
@@ -179,6 +293,8 @@ export function setupSocketHandlers(io: TypedServer): void {
 
         // ============ Call Liar ============
         socket.on('CALL_LIAR', () => {
+            if (!checkRateLimit(socket, 'CALL_LIAR')) return;
+
             const roomId = roomManager.getSocketRoom(socket.id);
             const playerId = roomManager.getSocketPlayer(socket.id);
             if (!roomId || !playerId) return;
@@ -194,16 +310,35 @@ export function setupSocketHandlers(io: TypedServer): void {
 
             // Broadcast reveal state
             broadcastRoomState(io, roomId);
+        });
 
-            // After a delay, proceed to next round
-            setTimeout(() => {
-                const nextRound = room.proceedToNextRound();
-                broadcastRoomState(io, roomId);
+        // ============ Continue To Next Round ============
+        socket.on('CONTINUE_TO_NEXT_ROUND', () => {
+            if (!checkRateLimit(socket, 'CONTINUE_TO_NEXT_ROUND')) return;
 
-                if (nextRound.gameOver) {
-                    console.log(`🏆 Game ended in room ${room.roomCode}`);
-                }
-            }, 5000); // 5 second reveal delay
+            const roomId = roomManager.getSocketRoom(socket.id);
+            const playerId = roomManager.getSocketPlayer(socket.id);
+            if (!roomId || !playerId) return;
+
+            const room = roomManager.getRoomById(roomId);
+            if (!room) return;
+
+            if (!room.isHost(playerId)) {
+                socket.emit('ERROR', { message: 'Only the host can start the next round', code: 'NOT_HOST' });
+                return;
+            }
+
+            if (room.phase !== 'REVEAL') {
+                socket.emit('ERROR', { message: 'Round is not ready to continue', code: 'INVALID_PHASE' });
+                return;
+            }
+
+            const nextRound = room.proceedToNextRound();
+            broadcastRoomState(io, roomId);
+
+            if (nextRound.gameOver) {
+                console.log(`🏆 Game ended in room ${room.roomCode}`);
+            }
         });
 
         // ============ Leave Room ============

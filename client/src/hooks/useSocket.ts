@@ -5,7 +5,7 @@ import type { ClientToServerEvents, ServerToClientEvents, GameSettings } from '.
 
 type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || `http://${window.location.hostname}:3001`;
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://api.mitoful.com';
 
 // Store playerId in localStorage for reconnection
 const PLAYER_ID_KEY = 'liars_dice_player_id';
@@ -21,7 +21,7 @@ function getSocket(): TypedSocket {
             reconnection: true,
             reconnectionAttempts: 10,
             reconnectionDelay: 1000,
-            transports: ['websocket', 'polling'],
+            transports: ['polling'],
         });
     }
     return socketInstance;
@@ -134,6 +134,10 @@ export function useSocket() {
         socketRef.current?.emit('CALL_LIAR');
     }, []);
 
+    const continueToNextRound = useCallback(() => {
+        socketRef.current?.emit('CONTINUE_TO_NEXT_ROUND');
+    }, []);
+
     const leaveRoom = useCallback(() => {
         socketRef.current?.emit('LEAVE_ROOM');
         useGameStore.getState().reset();
@@ -151,6 +155,7 @@ export function useSocket() {
         startGame,
         makeBid,
         callLiar,
+        continueToNextRound,
         leaveRoom,
         restartGame,
     };

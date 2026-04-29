@@ -18,7 +18,7 @@ export function GameScreen() {
     const isMyTurn = useIsMyTurn();
     const isHost = useAmHost();
     const canCallLiar = useCanCallLiar();
-    const { leaveRoom, restartGame, callLiar } = useSocket();
+    const { leaveRoom, restartGame, callLiar, continueToNextRound } = useSocket();
 
     // Sound effects
     useEffect(() => {
@@ -125,7 +125,7 @@ export function GameScreen() {
             )}
 
             {/* Reveal screen */}
-            {phase === 'REVEAL' && <RevealScreen />}
+            {phase === 'REVEAL' && <RevealScreen onContinueToNextRound={continueToNextRound} />}
 
             {/* My dice */}
             {phase === 'BIDDING' && myDice.length > 0 && (
