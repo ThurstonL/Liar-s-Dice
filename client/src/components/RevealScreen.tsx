@@ -55,7 +55,7 @@ export function RevealScreen({ onContinueToNextRound }: RevealScreenProps) {
                                 {player.displayName}
                                 {player.id === playerId && ' (You)'}
                             </p>
-                            <DiceDisplay values={dice} animate size="sm" />
+                            <DiceDisplay values={dice} animate size="reveal" />
                         </div>
                     );
                 })}

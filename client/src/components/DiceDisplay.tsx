@@ -1,7 +1,7 @@
 interface DiceDisplayProps {
     values: number[];
     hidden?: boolean;
-    size?: 'sm' | 'md' | 'lg';
+    size?: 'sm' | 'md' | 'lg' | 'reveal';
     animate?: boolean;
 }
 
@@ -9,12 +9,14 @@ const sizeClasses = {
     sm: 'w-8 h-8 text-sm',
     md: 'w-12 h-12 text-xl',
     lg: 'w-16 h-16 text-2xl',
+    reveal: 'w-9 h-9 sm:w-10 sm:h-10 text-sm',
 };
 
 const dotClasses = {
     sm: 'w-1.5 h-1.5',
     md: 'w-2 h-2',
     lg: 'w-2.5 h-2.5',
+    reveal: 'w-1.5 h-1.5 sm:w-2 sm:h-2',
     select: 'w-2 h-2',
 };
 
@@ -22,6 +24,7 @@ const pipOffsets = {
     sm: { low: '24%', mid: '50%', high: '76%' },
     md: { low: '24%', mid: '50%', high: '76%' },
     lg: { low: '24%', mid: '50%', high: '76%' },
+    reveal: { low: '20%', mid: '50%', high: '80%' },
     select: { low: '22%', mid: '50%', high: '78%' },
 };
 
