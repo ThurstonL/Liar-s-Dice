@@ -208,6 +208,11 @@ export class GameRoom {
             return { success: false, error: 'Not in bidding phase' };
         }
 
+        const player = this.players.get(playerId);
+        if (!player || player.isEliminated) {
+            return { success: false, error: 'Eliminated players cannot bid' };
+        }
+
         if (!this.isActivePlayer(playerId)) {
             return { success: false, error: 'Not your turn' };
         }
@@ -227,6 +232,11 @@ export class GameRoom {
     callLiar(challengerId: string): { success: boolean; error?: string; result?: RoundResult } {
         if (this.phase !== 'BIDDING') {
             return { success: false, error: 'Not in bidding phase' };
+        }
+
+        const challenger = this.players.get(challengerId);
+        if (!challenger || challenger.isEliminated) {
+            return { success: false, error: 'Eliminated players cannot call liar' };
         }
 
         if (!this.currentBid) {
@@ -279,6 +289,7 @@ export class GameRoom {
             loser.diceCount--;
             if (loser.diceCount <= 0) {
                 loser.isEliminated = true;
+                loser.dice = [];
             }
         }
 
@@ -397,13 +408,17 @@ export class GameRoom {
 
     getPrivateState(playerId: string): PrivateGameState {
         const player = this.players.get(playerId);
-        const isMyTurn = this.getActivePlayerId() === playerId;
+        const isEliminated = player?.isEliminated ?? true;
+        const isMyTurn = !isEliminated && this.getActivePlayerId() === playerId;
         const canBid = this.phase === 'BIDDING' && isMyTurn;
         // Allow calling liar if it's bidding phase, there's a bid, and you didn't make the bid
-        const canCallLiar = this.phase === 'BIDDING' && this.currentBid !== null && this.currentBid.playerId !== playerId;
+        const canCallLiar = !isEliminated &&
+            this.phase === 'BIDDING' &&
+            this.currentBid !== null &&
+            this.currentBid.playerId !== playerId;
 
         return {
-            myDice: player?.dice || [],
+            myDice: isEliminated ? [] : (player?.dice || []),
             isMyTurn,
             canBid,
             canCallLiar,

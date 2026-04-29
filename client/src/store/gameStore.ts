@@ -81,3 +81,10 @@ export const useCanCallLiar = () => {
     const privateState = useGameStore((state) => state.privateState);
     return privateState?.canCallLiar ?? false;
 };
+
+export const useAmEliminated = () => {
+    const publicState = useGameStore((state) => state.publicState);
+    const playerId = useGameStore((state) => state.playerId);
+    const me = publicState?.players.find(p => p.id === playerId);
+    return me?.isEliminated ?? false;
+};

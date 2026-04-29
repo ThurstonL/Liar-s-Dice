@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import confetti from 'canvas-confetti';
-import { useGameStore, useGamePhase, useMyDice, useCurrentBid, usePlayers, useIsMyTurn, useAmHost, useCanCallLiar } from '../store/gameStore';
+import { useGameStore, useGamePhase, useMyDice, useCurrentBid, usePlayers, useIsMyTurn, useAmHost, useCanCallLiar, useAmEliminated } from '../store/gameStore';
 import { useSocket } from '../hooks/useSocket';
 import { PlayerCard } from './PlayerCard';
 import { DiceDisplay } from './DiceDisplay';
@@ -18,6 +18,7 @@ export function GameScreen() {
     const isMyTurn = useIsMyTurn();
     const isHost = useAmHost();
     const canCallLiar = useCanCallLiar();
+    const amEliminated = useAmEliminated();
     const { leaveRoom, restartGame, callLiar, continueToNextRound } = useSocket();
 
     // Sound effects
@@ -116,7 +117,7 @@ export function GameScreen() {
             )}
 
             {/* Active player indicator */}
-            {phase === 'BIDDING' && !isMyTurn && activePlayer && (
+            {phase === 'BIDDING' && !isMyTurn && !amEliminated && activePlayer && (
                 <div className="glass-card p-3 mb-4 text-center bg-white/5 animate-pulse">
                     <p className="text-white/70">
                         Waiting for <span className="text-amber-400 font-semibold">{activePlayer.displayName}</span>...
@@ -128,7 +129,7 @@ export function GameScreen() {
             {phase === 'REVEAL' && <RevealScreen onContinueToNextRound={continueToNextRound} />}
 
             {/* My dice */}
-            {phase === 'BIDDING' && myDice.length > 0 && (
+            {phase === 'BIDDING' && !amEliminated && myDice.length > 0 && (
                 <div className="glass-card p-4 mb-4">
                     <p className="text-white/60 text-sm mb-2 text-center">Your Dice</p>
                     <DiceDisplay values={myDice} size="lg" />
@@ -152,14 +153,14 @@ export function GameScreen() {
             </div>
 
             {/* Bid input */}
-            {phase === 'BIDDING' && isMyTurn && (
+            {phase === 'BIDDING' && !amEliminated && isMyTurn && (
                 <div className="mt-auto animate-in slide-in-from-bottom-10">
                     <BidInput />
                 </div>
             )}
 
             {/* Liar button for non-active players */}
-            {phase === 'BIDDING' && !isMyTurn && canCallLiar && (
+            {phase === 'BIDDING' && !amEliminated && !isMyTurn && canCallLiar && (
                 <div className="mt-auto animate-in slide-in-from-bottom-10">
                     <button
                         onClick={callLiar}

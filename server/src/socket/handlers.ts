@@ -317,16 +317,10 @@ export function setupSocketHandlers(io: TypedServer): void {
             if (!checkRateLimit(socket, 'CONTINUE_TO_NEXT_ROUND')) return;
 
             const roomId = roomManager.getSocketRoom(socket.id);
-            const playerId = roomManager.getSocketPlayer(socket.id);
-            if (!roomId || !playerId) return;
+            if (!roomId) return;
 
             const room = roomManager.getRoomById(roomId);
             if (!room) return;
-
-            if (!room.isHost(playerId)) {
-                socket.emit('ERROR', { message: 'Only the host can start the next round', code: 'NOT_HOST' });
-                return;
-            }
 
             if (room.phase !== 'REVEAL') {
                 socket.emit('ERROR', { message: 'Round is not ready to continue', code: 'INVALID_PHASE' });
