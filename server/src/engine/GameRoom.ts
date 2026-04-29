@@ -9,7 +9,7 @@ import type {
     PrivateGameState,
     RoundResult,
     DEFAULT_SETTINGS,
-} from '../../../shared/types.js';
+} from '@liars-dice/shared/types.js';
 
 interface Player {
     id: string;

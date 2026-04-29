@@ -11,54 +11,50 @@ const sizeClasses = {
     lg: 'w-16 h-16 text-2xl',
 };
 
-// Dice face patterns using dots
-const diceFaces: Record<number, JSX.Element> = {
-    1: (
-        <div className="grid place-items-center w-full h-full">
-            <div className="dice-dot" />
-        </div>
-    ),
-    2: (
-        <div className="grid grid-cols-2 gap-1 p-1 w-full h-full">
-            <div className="dice-dot self-start justify-self-start" />
-            <div className="col-start-2 row-start-2 dice-dot self-end justify-self-end" />
-        </div>
-    ),
-    3: (
-        <div className="grid grid-cols-3 grid-rows-3 gap-0.5 p-1 w-full h-full">
-            <div className="dice-dot self-start justify-self-start" />
-            <div className="col-start-2 row-start-2 dice-dot self-center justify-self-center" />
-            <div className="col-start-3 row-start-3 dice-dot self-end justify-self-end" />
-        </div>
-    ),
-    4: (
-        <div className="grid grid-cols-2 gap-1 p-1.5 w-full h-full">
-            <div className="dice-dot" />
-            <div className="dice-dot" />
-            <div className="dice-dot" />
-            <div className="dice-dot" />
-        </div>
-    ),
-    5: (
-        <div className="grid grid-cols-3 grid-rows-3 gap-0.5 p-1 w-full h-full">
-            <div className="dice-dot self-start justify-self-start" />
-            <div className="col-start-3 dice-dot self-start justify-self-end" />
-            <div className="col-start-2 row-start-2 dice-dot self-center justify-self-center" />
-            <div className="row-start-3 dice-dot self-end justify-self-start" />
-            <div className="col-start-3 row-start-3 dice-dot self-end justify-self-end" />
-        </div>
-    ),
-    6: (
-        <div className="grid grid-cols-2 gap-1 p-1.5 w-full h-full">
-            <div className="dice-dot" />
-            <div className="dice-dot" />
-            <div className="dice-dot" />
-            <div className="dice-dot" />
-            <div className="dice-dot" />
-            <div className="dice-dot" />
-        </div>
-    ),
+const dotClasses = {
+    sm: 'w-1.5 h-1.5',
+    md: 'w-2 h-2',
+    lg: 'w-2.5 h-2.5',
+    select: 'w-2 h-2',
 };
+
+const pipOffsets = {
+    sm: { low: '24%', mid: '50%', high: '76%' },
+    md: { low: '24%', mid: '50%', high: '76%' },
+    lg: { low: '24%', mid: '50%', high: '76%' },
+    select: { low: '22%', mid: '50%', high: '78%' },
+};
+
+const facePips: Record<number, Array<[keyof typeof pipOffsets.sm, keyof typeof pipOffsets.sm]>> = {
+    1: [['mid', 'mid']],
+    2: [['low', 'low'], ['high', 'high']],
+    3: [['low', 'low'], ['mid', 'mid'], ['high', 'high']],
+    4: [['low', 'low'], ['high', 'low'], ['low', 'high'], ['high', 'high']],
+    5: [['low', 'low'], ['high', 'low'], ['mid', 'mid'], ['low', 'high'], ['high', 'high']],
+    6: [['low', 'low'], ['high', 'low'], ['low', 'mid'], ['high', 'mid'], ['low', 'high'], ['high', 'high']],
+};
+
+function DieFace({ value, variant = 'md' }: { value: number; variant?: keyof typeof dotClasses }) {
+    const dotClass = `dice-dot ${dotClasses[variant]}`;
+    const offsets = pipOffsets[variant];
+    const positions = facePips[value];
+
+    if (!positions) {
+        return <span className="text-slate-900 font-bold">{value}</span>;
+    }
+
+    return (
+        <div className="relative w-full h-full">
+            {positions.map(([x, y], index) => (
+                <div
+                    key={`${value}-${index}`}
+                    className={`${dotClass} absolute -translate-x-1/2 -translate-y-1/2`}
+                    style={{ left: offsets[x], top: offsets[y] }}
+                />
+            ))}
+        </div>
+    );
+}
 
 export function DiceDisplay({ values, hidden = false, size = 'md', animate = false }: DiceDisplayProps) {
     return (
@@ -68,7 +64,7 @@ export function DiceDisplay({ values, hidden = false, size = 'md', animate = fal
                     key={index}
                     className={`
             ${sizeClasses[size]}
-            bg-white rounded-lg shadow-lg flex items-center justify-center
+            bg-white rounded-lg shadow-lg flex items-center justify-center overflow-hidden
             ${animate ? 'dice-reveal' : ''}
           `}
                     style={animate ? { animationDelay: `${index * 100}ms` } : undefined}
@@ -76,7 +72,7 @@ export function DiceDisplay({ values, hidden = false, size = 'md', animate = fal
                     {hidden ? (
                         <span className="text-slate-400 font-bold">?</span>
                     ) : (
-                        diceFaces[value] || <span className="text-slate-900 font-bold">{value}</span>
+                        <DieFace value={value} variant={size} />
                     )}
                 </div>
             ))}
@@ -104,8 +100,8 @@ export function DieSelect({ value, selected, onClick }: DieSelectProps) {
         flex items-center justify-center shadow-lg
       `}
         >
-            <div className={`w-10 h-10 ${selected ? 'text-white' : ''}`}>
-                {diceFaces[value]}
+            <div className={`w-10 h-10 overflow-hidden ${selected ? 'text-white' : ''}`}>
+                <DieFace value={value} variant="select" />
             </div>
         </button>
     );

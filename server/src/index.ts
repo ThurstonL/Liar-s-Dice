@@ -3,7 +3,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import { setupSocketHandlers } from './socket/handlers.js';
-import type { ClientToServerEvents, ServerToClientEvents } from '../../shared/types.js';
+import type { ClientToServerEvents, ServerToClientEvents } from '@liars-dice/shared/types.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -18,7 +18,9 @@ const corsOptions = {
         if (origin.startsWith('http://localhost') ||
             origin.startsWith('http://127.0.0.1') ||
             origin.startsWith('http://192.168.') ||
-            origin.startsWith('http://10.')) {
+            origin.startsWith('http://10.') ||
+            origin === 'https://app.mitoful.com' ||
+            origin === 'https://api.mitoful.com') {
             return callback(null, true);
         }
 

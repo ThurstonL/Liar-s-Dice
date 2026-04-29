@@ -7,7 +7,7 @@ with automatic deploys triggered by pushing to `main` on GitHub.
 
 ```
 Browser → liarsdice.yourdomain.com → Cloudflare → cloudflared → Mac Mini (localhost:3001)
-Push to GitHub → GitHub Action → SSH into Mac Mini → git pull → PM2 restart
+Push to GitHub → GitHub Actions runner on Mac Mini → npm ci → npm run build → PM2 restart
 ```
 
 ---
@@ -73,7 +73,7 @@ pm2 restart liars-dice
 1. Go to [pages.cloudflare.com](https://pages.cloudflare.com) → New project → Connect GitHub
 2. Build command: `npm run build --workspace=client`
 3. Output directory: `client/dist`
-4. Set env var: `VITE_SERVER_URL=https://liarsdice.yourdomain.com`
+4. Set env var: `VITE_SOCKET_URL=https://liarsdice.yourdomain.com`
 
 ---
 
@@ -97,7 +97,7 @@ const corsOptions = {
 
 Update the client's socket connection URL (e.g. in `client/src/hooks/useSocket.ts`):
 ```ts
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001';
 ```
 
 And add to `client/.env.production`:
@@ -142,8 +142,7 @@ cloudflared tunnel route dns liars-dice liarsdice.yourdomain.com
 
 ### 4.6 Run the tunnel (as a background service)
 ```bash
-sudo cloudflared service install
-sudo launchctl start com.cloudflare.cloudflared
+brew services start cloudflared
 ```
 
 The tunnel now runs automatically at Mac Mini startup.
@@ -152,9 +151,9 @@ The tunnel now runs automatically at Mac Mini startup.
 
 ## Step 5: Set Up GitHub Actions Auto-Deploy (Self-Hosted Runner)
 
-Instead of SSH-ing from GitHub into your home network (which doesn't work with a local IP),
-we register the Mac Mini as a **self-hosted GitHub Runner**. The runner polls GitHub outbound —
-no inbound ports required, and it works perfectly through Cloudflare Tunnel.
+Instead of SSH-ing from GitHub into your home network, register the Mac Mini as a
+**self-hosted GitHub Actions runner**. The runner polls GitHub outbound, so no inbound
+ports or SSH secrets are needed.
 
 ### 5.1 Register the Mac Mini as a self-hosted runner
 
@@ -175,10 +174,10 @@ sudo ./svc.sh start
 
 ### 5.3 The workflow file is already in the repo
 `.github/workflows/deploy.yml` uses `runs-on: self-hosted`, so every push to `main`
-will automatically trigger a deploy on your Mac Mini — no secrets needed.
+will automatically trigger a deploy on your Mac Mini. The workflow checks out the repo,
+installs dependencies, builds the app, and restarts PM2.
 
-> **Note**: The runner must be running and the repo must be cloned at the same path
-> where you ran `./config.sh`. The workflow does `git pull` in that directory.
+No repo-specific GitHub secrets are required for deployment.
 
 ---
 
@@ -186,12 +185,12 @@ will automatically trigger a deploy on your Mac Mini — no secrets needed.
 
 - [ ] Clone repo on Mac Mini
 - [ ] Install Node, PM2, cloudflared
+- [ ] Set `VITE_SOCKET_URL` to your production domain
+- [ ] Update CORS to allow your production domain
 - [ ] Build and start server with PM2
-- [ ] Update CORS and client socket URL for production domain
 - [ ] Set up Cloudflare domain and tunnel
-- [ ] Enable SSH on Mac Mini
-- [ ] Add SSH key + GitHub secrets
-- [ ] Push `.github/workflows/deploy.yml` → auto-deploy active
+- [ ] Register the Mac Mini as a self-hosted GitHub runner
+- [ ] Push to `main` and verify the deploy workflow succeeds
 
 ---
 

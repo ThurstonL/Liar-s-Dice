@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import type { Bid, GameSettings } from '../../../shared/types.js';
+import type { Bid, GameSettings } from '@liars-dice/shared/types.js';
 
 /**
  * DiceEngine handles all dice-related logic:
