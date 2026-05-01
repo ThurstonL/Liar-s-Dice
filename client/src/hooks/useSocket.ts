@@ -49,6 +49,7 @@ export function useSocket() {
             const currentPlayerId = localStorage.getItem(PLAYER_ID_KEY);
 
             if (!savedRoomCode || !currentPlayerId || attemptedReconnectRef.current) {
+                store.getState().setRestoring(false);
                 return;
             }
 
@@ -70,11 +71,13 @@ export function useSocket() {
         const onDisconnect = () => {
             console.log('🔌 Disconnected from server');
             store.getState().setConnected(false);
+            store.getState().setRestoring(false);
         };
 
         const onConnectError = (error: Error) => {
             console.error('Connection error:', error);
             store.getState().setError('Failed to connect to server');
+            store.getState().setRestoring(false);
         };
 
         // Game events
@@ -104,11 +107,13 @@ export function useSocket() {
         const onSessionRestored = ({ roomCode, playerId }: { roomCode: string; playerId: string }) => {
             console.log('♻️ Session restored:', roomCode);
             persistSession(roomCode, playerId);
+            store.getState().setRestoring(false);
         };
 
         const onPublicStateUpdate = (state: any) => {
             localStorage.setItem(ROOM_CODE_KEY, state.roomCode);
             store.getState().setPublicState(state);
+            store.getState().setRestoring(false);
         };
 
         const onPrivateStateUpdate = (state: any) => {

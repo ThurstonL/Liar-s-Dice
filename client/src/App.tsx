@@ -8,12 +8,13 @@ export default function App() {
     useSocket(); // Initialize socket connection
 
     const isConnected = useGameStore((state) => state.isConnected);
+    const isRestoring = useGameStore((state) => state.isRestoring);
     const error = useGameStore((state) => state.error);
     const publicState = useGameStore((state) => state.publicState);
     const phase = useGamePhase();
 
     // Show connection status
-    if (!isConnected) {
+    if (!isConnected || isRestoring) {
         return (
             <div className="min-h-screen flex items-center justify-center p-4">
                 <div className="glass-card p-8 text-center max-w-md w-full">
@@ -26,7 +27,10 @@ export default function App() {
                                 Make sure the server is running on the host machine and is reachable.
                             </p>
                             <button
-                                onClick={() => window.location.reload()}
+                                onClick={() => {
+                                    useGameStore.getState().clearSessionState();
+                                    window.location.reload();
+                                }}
                                 className="btn-primary w-full"
                             >
                                 Retry Connection
@@ -35,7 +39,9 @@ export default function App() {
                     ) : (
                         <>
                             <div className="animate-spin w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full mx-auto mb-4" />
-                            <p className="text-white/70">Connecting to server...</p>
+                            <p className="text-white/70">
+                                {isRestoring && isConnected ? 'Restoring session...' : 'Connecting to server...'}
+                            </p>
                         </>
                     )}
                 </div>

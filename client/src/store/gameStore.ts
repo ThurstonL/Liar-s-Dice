@@ -4,6 +4,7 @@ import type { PublicGameState, PrivateGameState, GameSettings } from '../../../s
 interface GameStore {
     // Connection state
     isConnected: boolean;
+    isRestoring: boolean;
     playerId: string | null;
     error: string | null;
 
@@ -13,6 +14,7 @@ interface GameStore {
 
     // Actions
     setConnected: (connected: boolean) => void;
+    setRestoring: (restoring: boolean) => void;
     setPlayerId: (id: string | null) => void;
     setError: (error: string | null) => void;
     setPublicState: (state: PublicGameState) => void;
@@ -23,6 +25,7 @@ interface GameStore {
 
 const initialState = {
     isConnected: false,
+    isRestoring: !!localStorage.getItem('liars_dice_room_code'),
     playerId: null,
     error: null,
     publicState: null,
@@ -33,18 +36,20 @@ export const useGameStore = create<GameStore>((set) => ({
     ...initialState,
 
     setConnected: (connected) => set({ isConnected: connected }),
+    setRestoring: (restoring) => set({ isRestoring: restoring }),
     setPlayerId: (id) => set({ playerId: id }),
     setError: (error) => set({ error }),
     setPublicState: (state) => set({ publicState: state }),
     setPrivateState: (state) => set({ privateState: state }),
     clearSessionState: () => set((state) => ({
         isConnected: state.isConnected,
+        isRestoring: false,
         error: state.error,
         playerId: null,
         publicState: null,
         privateState: null,
     })),
-    reset: () => set(initialState),
+    reset: () => set({ ...initialState, isRestoring: false }),
 }));
 
 // Selector hooks for common state
