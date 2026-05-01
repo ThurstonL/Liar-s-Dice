@@ -17,6 +17,7 @@ interface GameStore {
     setError: (error: string | null) => void;
     setPublicState: (state: PublicGameState) => void;
     setPrivateState: (state: PrivateGameState) => void;
+    clearSessionState: () => void;
     reset: () => void;
 }
 
@@ -36,6 +37,13 @@ export const useGameStore = create<GameStore>((set) => ({
     setError: (error) => set({ error }),
     setPublicState: (state) => set({ publicState: state }),
     setPrivateState: (state) => set({ privateState: state }),
+    clearSessionState: () => set((state) => ({
+        isConnected: state.isConnected,
+        error: state.error,
+        playerId: null,
+        publicState: null,
+        privateState: null,
+    })),
     reset: () => set(initialState),
 }));
 

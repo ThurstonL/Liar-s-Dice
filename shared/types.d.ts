@@ -53,6 +53,10 @@ export interface ClientToServerEvents {
         roomCode: string;
         playerName: string;
     }) => void;
+    RECONNECT_SESSION: (data: {
+        roomCode: string;
+        playerId: string;
+    }) => void;
     UPDATE_SETTINGS: (data: Partial<GameSettings>) => void;
     START_GAME: () => void;
     MAKE_BID: (data: {
@@ -72,6 +76,11 @@ export interface ServerToClientEvents {
         playerId: string;
     }) => void;
     ROOM_JOINED: (data: {
+        roomCode: string;
+        playerId: string;
+    }) => void;
+    SESSION_RESTORED: (data: {
+        roomCode: string;
         playerId: string;
     }) => void;
     ERROR: (data: {

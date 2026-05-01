@@ -8,6 +8,7 @@ export class RoomManager {
     private roomCodeToId: Map<string, string> = new Map();
     private socketToRoom: Map<string, string> = new Map();
     private socketToPlayer: Map<string, string> = new Map();
+    private playerToSocket: Map<string, string> = new Map();
 
     createRoom(): GameRoom {
         const room = new GameRoom();
@@ -38,8 +39,15 @@ export class RoomManager {
 
     // Socket tracking
     trackSocket(socketId: string, roomId: string, playerId: string): void {
+        const existingSocketId = this.playerToSocket.get(playerId);
+        if (existingSocketId && existingSocketId !== socketId) {
+            this.socketToRoom.delete(existingSocketId);
+            this.socketToPlayer.delete(existingSocketId);
+        }
+
         this.socketToRoom.set(socketId, roomId);
         this.socketToPlayer.set(socketId, playerId);
+        this.playerToSocket.set(playerId, socketId);
     }
 
     untrackSocket(socketId: string): { roomId?: string; playerId?: string } {
@@ -47,6 +55,11 @@ export class RoomManager {
         const playerId = this.socketToPlayer.get(socketId);
         this.socketToRoom.delete(socketId);
         this.socketToPlayer.delete(socketId);
+
+        if (playerId && this.playerToSocket.get(playerId) === socketId) {
+            this.playerToSocket.delete(playerId);
+        }
+
         return { roomId, playerId };
     }
 
@@ -56,6 +69,10 @@ export class RoomManager {
 
     getSocketPlayer(socketId: string): string | undefined {
         return this.socketToPlayer.get(socketId);
+    }
+
+    getPlayerSocket(playerId: string): string | undefined {
+        return this.playerToSocket.get(playerId);
     }
 
     // Cleanup empty rooms

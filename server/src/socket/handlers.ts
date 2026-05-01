@@ -195,10 +195,39 @@ export function setupSocketHandlers(io: TypedServer): void {
             roomManager.trackSocket(socket.id, room.id, result.playerId);
             socket.join(room.id);
 
-            socket.emit('ROOM_JOINED', { playerId: result.playerId });
+            socket.emit('ROOM_JOINED', { roomCode: room.roomCode, playerId: result.playerId });
             broadcastRoomState(io, room.id);
 
             console.log(`👤 ${playerName} joined room ${room.roomCode}`);
+        });
+
+        // ============ Session Reconnect ============
+        socket.on('RECONNECT_SESSION', ({ roomCode, playerId }) => {
+            if (!roomCode || !playerId) {
+                socket.emit('ERROR', { message: 'Reconnect session is missing required data', code: 'INVALID_SESSION' });
+                return;
+            }
+
+            const room = roomManager.getRoomByCode(roomCode.trim());
+            if (!room) {
+                socket.emit('ERROR', { message: 'Saved room was not found', code: 'SESSION_NOT_FOUND' });
+                return;
+            }
+
+            const player = room.getPlayerById(playerId);
+            if (!player) {
+                socket.emit('ERROR', { message: 'Saved player session was not found', code: 'SESSION_NOT_FOUND' });
+                return;
+            }
+
+            room.reconnectPlayer(playerId, socket.id);
+            roomManager.trackSocket(socket.id, room.id, playerId);
+            socket.join(room.id);
+
+            socket.emit('SESSION_RESTORED', { roomCode: room.roomCode, playerId });
+            broadcastRoomState(io, room.id);
+
+            console.log(`♻️ ${player.displayName} reconnected to room ${room.roomCode}`);
         });
 
         // ============ Settings Update ============
@@ -337,7 +366,7 @@ export function setupSocketHandlers(io: TypedServer): void {
 
         // ============ Leave Room ============
         socket.on('LEAVE_ROOM', () => {
-            handleDisconnect(socket);
+            handleLeaveRoom(socket);
         });
 
         // ============ Disconnect ============
@@ -346,27 +375,37 @@ export function setupSocketHandlers(io: TypedServer): void {
             handleDisconnect(socket);
         });
 
+        function handleLeaveRoom(socket: TypedSocket): void {
+            const { roomId, playerId } = roomManager.untrackSocket(socket.id);
+
+            if (!roomId || !playerId) return;
+
+            const room = roomManager.getRoomById(roomId);
+            if (!room) return;
+
+            if (room.phase === 'LOBBY') {
+                room.removePlayer(playerId);
+            } else {
+                room.disconnectPlayer(playerId);
+            }
+
+            broadcastRoomState(io, roomId);
+
+            if (room.getPlayerCount() === 0) {
+                roomManager.deleteRoom(roomId);
+                console.log(`🗑️ Room ${room.roomCode} deleted (empty)`);
+            }
+        }
+
         function handleDisconnect(socket: TypedSocket): void {
             const { roomId, playerId } = roomManager.untrackSocket(socket.id);
 
             if (roomId && playerId) {
                 const room = roomManager.getRoomById(roomId);
                 if (room) {
-                    if (room.phase === 'LOBBY') {
-                        // In lobby, fully remove the player
-                        room.removePlayer(playerId);
-                    } else {
-                        // In game, mark as disconnected
-                        room.disconnectPlayer(playerId);
-                    }
+                    room.disconnectPlayer(playerId);
 
                     broadcastRoomState(io, roomId);
-
-                    // Cleanup empty rooms
-                    if (room.getPlayerCount() === 0) {
-                        roomManager.deleteRoom(roomId);
-                        console.log(`🗑️ Room ${room.roomCode} deleted (empty)`);
-                    }
                 }
             }
         }

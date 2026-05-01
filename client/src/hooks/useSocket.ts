@@ -9,6 +9,7 @@ const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://api.mitoful.com';
 
 // Store playerId in localStorage for reconnection
 const PLAYER_ID_KEY = 'liars_dice_player_id';
+const ROOM_CODE_KEY = 'liars_dice_room_code';
 
 // Singleton socket instance - prevents multiple connections
 let socketInstance: TypedSocket | null = null;
@@ -29,6 +30,7 @@ function getSocket(): TypedSocket {
 
 export function useSocket() {
     const socketRef = useRef<TypedSocket | null>(null);
+    const attemptedReconnectRef = useRef(false);
 
     // Get store actions without causing re-renders
     const store = useGameStore;
@@ -37,11 +39,32 @@ export function useSocket() {
         const socket = getSocket();
         socketRef.current = socket;
 
+        const savedPlayerId = localStorage.getItem(PLAYER_ID_KEY);
+        if (savedPlayerId) {
+            store.getState().setPlayerId(savedPlayerId);
+        }
+
+        const attemptSessionRestore = () => {
+            const savedRoomCode = localStorage.getItem(ROOM_CODE_KEY);
+            const currentPlayerId = localStorage.getItem(PLAYER_ID_KEY);
+
+            if (!savedRoomCode || !currentPlayerId || attemptedReconnectRef.current) {
+                return;
+            }
+
+            attemptedReconnectRef.current = true;
+            socket.emit('RECONNECT_SESSION', {
+                roomCode: savedRoomCode,
+                playerId: currentPlayerId,
+            });
+        };
+
         // Connection events
         const onConnect = () => {
             console.log('🔌 Connected to server');
             store.getState().setConnected(true);
             store.getState().setError(null);
+            attemptSessionRestore();
         };
 
         const onDisconnect = () => {
@@ -55,19 +78,36 @@ export function useSocket() {
         };
 
         // Game events
-        const onRoomCreated = ({ roomCode, playerId }: { roomCode: string; playerId: string }) => {
-            console.log('🎲 Room created:', roomCode);
-            store.getState().setPlayerId(playerId);
+        const persistSession = (roomCode: string, playerId: string) => {
             localStorage.setItem(PLAYER_ID_KEY, playerId);
+            localStorage.setItem(ROOM_CODE_KEY, roomCode);
+            store.getState().setPlayerId(playerId);
+            attemptedReconnectRef.current = false;
         };
 
-        const onRoomJoined = ({ playerId }: { playerId: string }) => {
+        const clearSession = () => {
+            localStorage.removeItem(PLAYER_ID_KEY);
+            localStorage.removeItem(ROOM_CODE_KEY);
+            attemptedReconnectRef.current = false;
+        };
+
+        const onRoomCreated = ({ roomCode, playerId }: { roomCode: string; playerId: string }) => {
+            console.log('🎲 Room created:', roomCode);
+            persistSession(roomCode, playerId);
+        };
+
+        const onRoomJoined = ({ roomCode, playerId }: { roomCode: string; playerId: string }) => {
             console.log('👤 Joined room');
-            store.getState().setPlayerId(playerId);
-            localStorage.setItem(PLAYER_ID_KEY, playerId);
+            persistSession(roomCode, playerId);
+        };
+
+        const onSessionRestored = ({ roomCode, playerId }: { roomCode: string; playerId: string }) => {
+            console.log('♻️ Session restored:', roomCode);
+            persistSession(roomCode, playerId);
         };
 
         const onPublicStateUpdate = (state: any) => {
+            localStorage.setItem(ROOM_CODE_KEY, state.roomCode);
             store.getState().setPublicState(state);
         };
 
@@ -75,8 +115,14 @@ export function useSocket() {
             store.getState().setPrivateState(state);
         };
 
-        const onError = ({ message }: { message: string }) => {
+        const onError = ({ message, code }: { message: string; code: string }) => {
             console.error('Server error:', message);
+
+            if (code === 'SESSION_NOT_FOUND' || code === 'INVALID_SESSION') {
+                clearSession();
+                store.getState().clearSessionState();
+            }
+
             store.getState().setError(message);
             setTimeout(() => store.getState().setError(null), 3000);
         };
@@ -87,6 +133,7 @@ export function useSocket() {
         socket.on('connect_error', onConnectError);
         socket.on('ROOM_CREATED', onRoomCreated);
         socket.on('ROOM_JOINED', onRoomJoined);
+        socket.on('SESSION_RESTORED', onSessionRestored);
         socket.on('PUBLIC_STATE_UPDATE', onPublicStateUpdate);
         socket.on('PRIVATE_STATE_UPDATE', onPrivateStateUpdate);
         socket.on('ERROR', onError);
@@ -103,6 +150,7 @@ export function useSocket() {
             socket.off('connect_error', onConnectError);
             socket.off('ROOM_CREATED', onRoomCreated);
             socket.off('ROOM_JOINED', onRoomJoined);
+            socket.off('SESSION_RESTORED', onSessionRestored);
             socket.off('PUBLIC_STATE_UPDATE', onPublicStateUpdate);
             socket.off('PRIVATE_STATE_UPDATE', onPrivateStateUpdate);
             socket.off('ERROR', onError);
@@ -140,8 +188,10 @@ export function useSocket() {
 
     const leaveRoom = useCallback(() => {
         socketRef.current?.emit('LEAVE_ROOM');
-        useGameStore.getState().reset();
+        useGameStore.getState().clearSessionState();
         localStorage.removeItem(PLAYER_ID_KEY);
+        localStorage.removeItem(ROOM_CODE_KEY);
+        attemptedReconnectRef.current = false;
     }, []);
 
     const restartGame = useCallback(() => {

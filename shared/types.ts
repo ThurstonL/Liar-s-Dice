@@ -63,6 +63,7 @@ export interface RoundResult {
 export interface ClientToServerEvents {
     CREATE_ROOM: (data: { playerName: string }) => void;
     JOIN_ROOM: (data: { roomCode: string; playerName: string }) => void;
+    RECONNECT_SESSION: (data: { roomCode: string; playerId: string }) => void;
     UPDATE_SETTINGS: (data: Partial<GameSettings>) => void;
     START_GAME: () => void;
     MAKE_BID: (data: { quantity: number; faceValue: number }) => void;
@@ -76,7 +77,8 @@ export interface ServerToClientEvents {
     PUBLIC_STATE_UPDATE: (state: PublicGameState) => void;
     PRIVATE_STATE_UPDATE: (state: PrivateGameState) => void;
     ROOM_CREATED: (data: { roomCode: string; playerId: string }) => void;
-    ROOM_JOINED: (data: { playerId: string }) => void;
+    ROOM_JOINED: (data: { roomCode: string; playerId: string }) => void;
+    SESSION_RESTORED: (data: { roomCode: string; playerId: string }) => void;
     ERROR: (data: { message: string; code: string }) => void;
 }
 
