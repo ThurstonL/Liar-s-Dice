@@ -5,9 +5,10 @@ interface PlayerCardProps {
     isMe: boolean;
     isActive?: boolean;
     showDiceCount?: boolean;
+    onKick?: () => void;
 }
 
-export function PlayerCard({ player, isMe, isActive = false, showDiceCount = true }: PlayerCardProps) {
+export function PlayerCard({ player, isMe, isActive = false, showDiceCount = true, onKick }: PlayerCardProps) {
     return (
         <div
             className={`
@@ -52,13 +53,29 @@ export function PlayerCard({ player, isMe, isActive = false, showDiceCount = tru
                 </div>
             </div>
 
-            {/* Dice count */}
-            {showDiceCount && !player.isEliminated && (
-                <div className="flex items-center gap-1">
-                    <span className="text-2xl">🎲</span>
-                    <span className="text-xl font-bold">{player.diceCount}</span>
-                </div>
-            )}
+            {/* Right side controls */}
+            <div className="flex items-center gap-4">
+                {/* Dice count */}
+                {showDiceCount && !player.isEliminated && (
+                    <div className="flex items-center gap-1">
+                        <span className="text-2xl">🎲</span>
+                        <span className="text-xl font-bold">{player.diceCount}</span>
+                    </div>
+                )}
+                
+                {/* Kick button */}
+                {onKick && (
+                    <button
+                        onClick={onKick}
+                        className="p-2 rounded-full hover:bg-red-500/20 text-red-400/70 hover:text-red-400 transition-colors"
+                        title="Kick player"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                    </button>
+                )}
+            </div>
         </div>
     );
 }

@@ -98,6 +98,54 @@ export class GameRoom {
         }
     }
 
+    /**
+     * Remove a player mid-game: eliminate them, fix turn order,
+     * handle edge cases (active player leaving, bid owner leaving),
+     * and check for game-end.
+     */
+    removePlayerMidGame(playerId: string): { gameOver: boolean; winnerId?: string } {
+        const player = this.players.get(playerId);
+        if (!player) return { gameOver: false };
+
+        // Mark as eliminated and disconnected
+        player.isEliminated = true;
+        player.isConnected = false;
+        player.dice = [];
+        player.diceCount = 0;
+
+        // If this player made the current bid, clear it — can't challenge an absent player
+        if (this.currentBid && this.currentBid.playerId === playerId) {
+            this.currentBid = null;
+        }
+
+        // If this player is the active player, advance the turn
+        const activeId = this.playerOrder[this.activePlayerIndex];
+        if (activeId === playerId) {
+            this.advanceToNextActivePlayer();
+        }
+
+        // Transfer host if needed
+        if (this.hostId === playerId) {
+            player.isHost = false;
+            const newHost = Array.from(this.players.values()).find(
+                p => !p.isEliminated && p.isConnected && p.id !== playerId
+            );
+            if (newHost) {
+                this.hostId = newHost.id;
+                newHost.isHost = true;
+            }
+        }
+
+        // Check for game end — only 1 (or 0) active players left
+        const activePlayers = Array.from(this.players.values()).filter(p => !p.isEliminated);
+        if (activePlayers.length <= 1) {
+            this.phase = 'GAME_END';
+            return { gameOver: true, winnerId: activePlayers[0]?.id };
+        }
+
+        return { gameOver: false };
+    }
+
     reconnectPlayer(playerId: string, newSocketId: string): boolean {
         const player = this.players.get(playerId);
         if (player) {

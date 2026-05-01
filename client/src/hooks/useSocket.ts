@@ -118,7 +118,7 @@ export function useSocket() {
         const onError = ({ message, code }: { message: string; code: string }) => {
             console.error('Server error:', message);
 
-            if (code === 'SESSION_NOT_FOUND' || code === 'INVALID_SESSION') {
+            if (code === 'SESSION_NOT_FOUND' || code === 'INVALID_SESSION' || code === 'KICKED_BY_HOST') {
                 clearSession();
                 store.getState().clearSessionState();
             }
@@ -194,6 +194,11 @@ export function useSocket() {
         attemptedReconnectRef.current = false;
     }, []);
 
+    const kickPlayer = useCallback((targetPlayerId: string) => {
+        console.log('Emitting KICK_PLAYER for target:', targetPlayerId);
+        socketRef.current?.emit('KICK_PLAYER', { targetPlayerId });
+    }, []);
+
     const restartGame = useCallback(() => {
         socketRef.current?.emit('RESTART_GAME');
     }, []);
@@ -207,6 +212,7 @@ export function useSocket() {
         callLiar,
         continueToNextRound,
         leaveRoom,
+        kickPlayer,
         restartGame,
     };
 }

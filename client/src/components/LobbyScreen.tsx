@@ -8,7 +8,7 @@ export function LobbyScreen() {
     const playerId = useGameStore((state) => state.playerId);
     const amHost = useAmHost();
     const players = usePlayers();
-    const { startGame, leaveRoom } = useSocket();
+    const { startGame, leaveRoom, kickPlayer } = useSocket();
 
     if (!publicState) return null;
 
@@ -56,6 +56,7 @@ export function LobbyScreen() {
                                 player={player}
                                 isMe={player.id === playerId}
                                 showDiceCount={false}
+                                onKick={amHost && player.id !== playerId ? () => kickPlayer(player.id) : undefined}
                             />
                         ))}
                     </div>

@@ -56,6 +56,12 @@ const RATE_LIMIT_RULES: Record<string, RateLimitRule> = {
         message: 'Please wait a moment before trying to restart again.',
         code: 'RATE_LIMITED',
     },
+    KICK_PLAYER: {
+        windowMs: 5_000,
+        maxEvents: 5,
+        message: 'You are kicking players too quickly. Please slow down.',
+        code: 'RATE_LIMITED',
+    },
     MAKE_BID: {
         windowMs: 3_000,
         maxEvents: 8,
@@ -364,6 +370,64 @@ export function setupSocketHandlers(io: TypedServer): void {
             }
         });
 
+        // ============ Kick Player ============
+        socket.on('KICK_PLAYER', ({ targetPlayerId }) => {
+            console.log(`Received KICK_PLAYER request for ${targetPlayerId}`);
+            if (!checkRateLimit(socket, 'KICK_PLAYER')) {
+                console.log('Rate limited');
+                return;
+            }
+
+            const roomId = roomManager.getSocketRoom(socket.id);
+            const playerId = roomManager.getSocketPlayer(socket.id);
+            
+            console.log(`Kick request context - roomId: ${roomId}, playerId: ${playerId}`);
+            
+            if (!roomId || !playerId || !targetPlayerId) return;
+
+            const room = roomManager.getRoomById(roomId);
+            if (!room) {
+                console.log('Room not found');
+                return;
+            }
+
+            // Only host can kick, and only in LOBBY
+            if (!room.isHost(playerId)) {
+                socket.emit('ERROR', { message: 'Only the host can kick players', code: 'NOT_HOST' });
+                return;
+            }
+
+            if (room.phase !== 'LOBBY') {
+                socket.emit('ERROR', { message: 'Can only kick players in the lobby', code: 'INVALID_PHASE' });
+                return;
+            }
+
+            // Cannot kick yourself
+            if (playerId === targetPlayerId) {
+                socket.emit('ERROR', { message: 'Cannot kick yourself', code: 'INVALID_TARGET' });
+                return;
+            }
+
+            const targetSocketId = roomManager.getPlayerSocket(targetPlayerId);
+            if (targetSocketId) {
+                // Notify the target socket
+                io.to(targetSocketId).emit('ERROR', { message: 'You were kicked by the host', code: 'KICKED_BY_HOST' });
+                
+                // Force target socket to leave the room
+                const targetSocket = io.sockets.sockets.get(targetSocketId);
+                if (targetSocket) {
+                    targetSocket.leave(roomId);
+                }
+                
+                // Untrack target socket
+                roomManager.untrackSocket(targetSocketId);
+            }
+
+            room.removePlayer(targetPlayerId);
+            broadcastRoomState(io, roomId);
+            console.log(`👢 Player ${targetPlayerId} was kicked from room ${room.roomCode}`);
+        });
+
         // ============ Leave Room ============
         socket.on('LEAVE_ROOM', () => {
             handleLeaveRoom(socket);
@@ -386,7 +450,7 @@ export function setupSocketHandlers(io: TypedServer): void {
             if (room.phase === 'LOBBY') {
                 room.removePlayer(playerId);
             } else {
-                room.disconnectPlayer(playerId);
+                room.removePlayerMidGame(playerId);
             }
 
             broadcastRoomState(io, roomId);

@@ -70,6 +70,7 @@ export interface ClientToServerEvents {
     CALL_LIAR: () => void;
     CONTINUE_TO_NEXT_ROUND: () => void;
     RESTART_GAME: () => void;
+    KICK_PLAYER: (data: { targetPlayerId: string }) => void;
     LEAVE_ROOM: () => void;
 }
 
