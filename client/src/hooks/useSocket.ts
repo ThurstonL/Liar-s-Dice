@@ -5,7 +5,39 @@ import type { ClientToServerEvents, ServerToClientEvents, GameSettings } from '.
 
 type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://api.mitoful.com';
+function resolveSocketUrl(): string {
+    const configuredUrl = import.meta.env.VITE_SOCKET_URL?.trim();
+    if (configuredUrl) {
+        return configuredUrl;
+    }
+
+    if (typeof window === 'undefined') {
+        return 'http://localhost:3001';
+    }
+
+    const { hostname } = window.location;
+
+    if (
+        hostname === 'localhost' ||
+        hostname === '127.0.0.1' ||
+        hostname.startsWith('192.168.') ||
+        hostname.startsWith('10.')
+    ) {
+        return `http://${hostname}:3001`;
+    }
+
+    if (hostname === 'app.mitoful.com') {
+        return 'https://api.mitoful.com';
+    }
+
+    if (hostname === 'liarsdice.thepregames.com') {
+        return 'https://liarsdice-api.thepregames.com';
+    }
+
+    return `https://${hostname}`;
+}
+
+const SOCKET_URL = resolveSocketUrl();
 
 // Store playerId in localStorage for reconnection
 const PLAYER_ID_KEY = 'liars_dice_player_id';

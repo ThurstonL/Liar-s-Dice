@@ -2,9 +2,9 @@
 set -euo pipefail
 
 agents=(
-  com.mitoful.liarsdice.backend
-  com.mitoful.liarsdice.frontend
-  com.mitoful.liarsdice.tunnel
+  com.thepregames.liarsdice.backend
+  com.thepregames.liarsdice.frontend
+  com.thepregames.liarsdice.tunnel
 )
 
 user_domain="gui/$(id -u)"
@@ -22,13 +22,13 @@ agent_is_loaded() {
 agent_script() {
   local name="$1"
   case "$name" in
-    com.mitoful.liarsdice.backend)
+    com.thepregames.liarsdice.backend)
       echo "/Users/thurston/Workspace/Liar-s-Dice/scripts/run_backend.sh"
       ;;
-    com.mitoful.liarsdice.frontend)
+    com.thepregames.liarsdice.frontend)
       echo "/Users/thurston/Workspace/Liar-s-Dice/scripts/run_frontend.sh"
       ;;
-    com.mitoful.liarsdice.tunnel)
+    com.thepregames.liarsdice.tunnel)
       echo "/Users/thurston/Workspace/Liar-s-Dice/scripts/run_tunnel.sh"
       ;;
     *)
@@ -41,13 +41,13 @@ agent_script() {
 agent_log() {
   local name="$1"
   case "$name" in
-    com.mitoful.liarsdice.backend)
+    com.thepregames.liarsdice.backend)
       echo "/Users/thurston/Workspace/Liar-s-Dice/logs/backend.manual.log"
       ;;
-    com.mitoful.liarsdice.frontend)
+    com.thepregames.liarsdice.frontend)
       echo "/Users/thurston/Workspace/Liar-s-Dice/logs/frontend.manual.log"
       ;;
-    com.mitoful.liarsdice.tunnel)
+    com.thepregames.liarsdice.tunnel)
       echo "/Users/thurston/Workspace/Liar-s-Dice/logs/tunnel.manual.log"
       ;;
     *)
@@ -60,14 +60,14 @@ agent_log() {
 agent_is_healthy() {
   local name="$1"
   case "$name" in
-    com.mitoful.liarsdice.backend)
+    com.thepregames.liarsdice.backend)
       lsof -nP -iTCP:3001 -sTCP:LISTEN >/dev/null 2>&1
       ;;
-    com.mitoful.liarsdice.frontend)
+    com.thepregames.liarsdice.frontend)
       lsof -nP -iTCP:3000 -sTCP:LISTEN >/dev/null 2>&1
       ;;
-    com.mitoful.liarsdice.tunnel)
-      pgrep -f "cloudflared tunnel run setup" >/dev/null 2>&1
+    com.thepregames.liarsdice.tunnel)
+      pgrep -f "cloudflared tunnel run" >/dev/null 2>&1
       ;;
     *)
       return 1
@@ -136,11 +136,23 @@ start_manual_agent() {
 kill_orphans() {
   pkill -f "/Users/thurston/Workspace/Liar-s-Dice/server/dist/index.js" 2>/dev/null || true
   pkill -f "http.server 3000" 2>/dev/null || true
-  pkill -f "cloudflared tunnel run setup" 2>/dev/null || true
+  pkill -f "cloudflared tunnel run" 2>/dev/null || true
 }
 
 usage() {
-  echo "Usage: $0 {start|stop|restart|status|logs}"
+  echo "Usage: $0 {install|start|stop|restart|status|logs}"
+}
+
+install_agents() {
+  local source_dir="/Users/thurston/Workspace/Liar-s-Dice/launchd"
+  local target_dir="$HOME/Library/LaunchAgents"
+
+  mkdir -p "$target_dir"
+
+  for agent in "${agents[@]}"; do
+    cp "$source_dir/${agent}.plist" "$target_dir/${agent}.plist"
+    echo "Installed $target_dir/${agent}.plist"
+  done
 }
 
 require_agent() {
@@ -243,6 +255,9 @@ show_logs() {
 }
 
 case "${1:-}" in
+  install)
+    install_agents
+    ;;
   start)
     start_agents
     ;;

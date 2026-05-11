@@ -23,8 +23,11 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Restart server
-        run: pm2 restart liars-dice || pm2 start server/dist/index.js --name liars-dice
-
-      - name: Save PM2 process list
-        run: pm2 save
+      - name: Restart services
+        run: |
+          if [ -f "$HOME/Library/LaunchAgents/com.thepregames.liarsdice.backend.plist" ]; then
+            ./scripts/manage_services.sh restart
+          else
+            pm2 restart liars-dice || pm2 start server/dist/index.js --name liars-dice
+            pm2 save
+          fi

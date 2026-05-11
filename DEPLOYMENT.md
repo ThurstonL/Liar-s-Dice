@@ -6,9 +6,42 @@ Self-host the app on a Mac Mini, exposed publicly via a Cloudflare Tunnel (no op
 with automatic deploys triggered by pushing to `main` on GitHub.
 
 ```
-Browser → liarsdice.yourdomain.com → Cloudflare → cloudflared → Mac Mini (localhost:3001)
-Push to GitHub → GitHub Actions runner on Mac Mini → npm ci → npm run build → PM2 restart
+Browser → liarsdice.thepregames.com → Cloudflare → cloudflared → Mac Mini (localhost:3000)
+Browser WebSocket/API → liarsdice-api.thepregames.com → Cloudflare → cloudflared → Mac Mini (localhost:3001)
+Push to GitHub → GitHub Actions runner on Mac Mini → npm ci → npm run build → restart local app services
 ```
+
+## Current Production Hostnames
+
+- Frontend: `https://liarsdice.thepregames.com`
+- WebSocket/API: `https://liarsdice-api.thepregames.com`
+
+Why the API uses `liarsdice-api` instead of `liarsdice.api`:
+
+- Cloudflare Universal SSL covers the apex domain and first-level subdomains
+- `liarsdice.thepregames.com` is covered
+- `liarsdice.api.thepregames.com` is a deeper subdomain and may require additional certificate setup
+- `liarsdice-api.thepregames.com` avoids that issue and works with the current setup
+
+## Domain Migration Checklist
+
+If you are moving the app from an old domain to a new one, update all four places below:
+
+1. `client/.env.production`
+   Set `VITE_SOCKET_URL=https://liarsdice-api.yourdomain.com`
+2. `server` CORS config
+   Add the frontend and API origins, or set `ALLOWED_ORIGINS`
+3. `~/.cloudflared/config.yml`
+   Point the ingress hostnames at the new frontend and API subdomains
+4. `~/Library/LaunchAgents`
+   Reinstall the checked-in plist files if their filenames or labels changed
+
+The current repo includes `scripts/manage_services.sh install` to copy the repo's
+plist files into `~/Library/LaunchAgents`.
+
+Important: `~/.cloudflared/config.yml` is machine-local config on the Mac Mini.
+It is not read by GitHub Actions and should not be treated as repo config that needs
+to be pushed to GitHub.
 
 ---
 
@@ -24,9 +57,9 @@ Push to GitHub → GitHub Actions runner on Mac Mini → npm ci → npm run buil
 brew install node
 ```
 
-### 1.3 Install PM2 (process manager — keeps the server running)
+### 1.3 Install runtime dependencies
 ```bash
-npm install -g pm2
+brew install cloudflare/cloudflare/cloudflared
 ```
 
 ### 1.4 Clone the repo
@@ -36,13 +69,40 @@ cd Liar-s-Dice
 npm install
 ```
 
-### 1.5 Build and start the server with PM2
+### 1.5 Build the app
 ```bash
 npm run build
-pm2 start server/dist/index.js --name liars-dice
-pm2 save          # Save process list so it survives reboots
-pm2 startup       # Follow the printed command to enable auto-start on login
 ```
+
+---
+
+## Step 1A: Install the repo's LaunchAgents
+
+The repo's current deployment path uses macOS `launchd` for:
+
+- frontend static file server on port `3000`
+- backend Node server on port `3001`
+- `cloudflared tunnel run`
+
+Install the checked-in plist files:
+
+```bash
+./scripts/manage_services.sh install
+launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.thepregames.liarsdice.backend.plist"
+launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.thepregames.liarsdice.frontend.plist"
+launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.thepregames.liarsdice.tunnel.plist"
+./scripts/manage_services.sh restart
+```
+
+If you are migrating from the old `com.mitoful.*` labels, unload those first:
+
+```bash
+launchctl bootout "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.mitoful.liarsdice.backend.plist" 2>/dev/null || true
+launchctl bootout "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.mitoful.liarsdice.frontend.plist" 2>/dev/null || true
+launchctl bootout "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.mitoful.liarsdice.tunnel.plist" 2>/dev/null || true
+```
+
+PM2 can still be used as a fallback, but it is no longer the primary runtime path reflected in this repo.
 
 ---
 
@@ -66,27 +126,28 @@ app.get('*', (_req, res) => {
 Then rebuild:
 ```bash
 npm run build
-pm2 restart liars-dice
+./scripts/manage_services.sh restart
 ```
 
 ### Option B: Deploy client to a free static host (e.g. Cloudflare Pages)
 1. Go to [pages.cloudflare.com](https://pages.cloudflare.com) → New project → Connect GitHub
 2. Build command: `npm run build --workspace=client`
 3. Output directory: `client/dist`
-4. Set env var: `VITE_SOCKET_URL=https://liarsdice.yourdomain.com`
+4. Set env var: `VITE_SOCKET_URL=https://liarsdice-api.yourdomain.com`
 
 ---
 
 ## Step 3: Update CORS for Production
 
-In `server/src/index.ts`, update the CORS `origin` to allow your production domain:
+In `server/src/index.ts`, either set `ALLOWED_ORIGINS` or update the CORS allowlist to allow your production domain:
 
 ```ts
 const corsOptions = {
   origin: (origin, callback) => {
     const allowed = [
       'http://localhost:5173',
-      'https://liarsdice.yourdomain.com', // 👈 replace with your domain
+      'https://liarsdice.yourdomain.com', // frontend
+      'https://liarsdice-api.yourdomain.com', // API host
     ];
     if (!origin || allowed.includes(origin)) return callback(null, true);
     return callback(new Error('Not allowed by CORS'));
@@ -102,7 +163,7 @@ const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001';
 
 And add to `client/.env.production`:
 ```
-VITE_SOCKET_URL=https://liarsdice.yourdomain.com
+VITE_SOCKET_URL=https://liarsdice-api.yourdomain.com
 ```
 
 ---
@@ -112,18 +173,15 @@ VITE_SOCKET_URL=https://liarsdice.yourdomain.com
 ### 4.1 Get a domain on Cloudflare
 Buy or transfer a domain at [cloudflare.com](https://cloudflare.com). (~$10/yr)
 
-### 4.2 Install cloudflared on Mac Mini
-```bash
-brew install cloudflare/cloudflare/cloudflared
-```
-
-### 4.3 Authenticate and create a tunnel
+### 4.2 Authenticate and create a tunnel
 ```bash
 cloudflared tunnel login
 cloudflared tunnel create liars-dice
 ```
 
-### 4.4 Configure the tunnel
+If you already have a managed tunnel in Cloudflare, you can reuse it instead of creating a new one.
+
+### 4.3 Configure the tunnel
 Create `~/.cloudflared/config.yml`:
 ```yaml
 tunnel: <YOUR_TUNNEL_ID>
@@ -131,21 +189,43 @@ credentials-file: /Users/<your-username>/.cloudflared/<YOUR_TUNNEL_ID>.json
 
 ingress:
   - hostname: liarsdice.yourdomain.com
+    service: http://localhost:3000
+  - hostname: liarsdice-api.yourdomain.com
     service: http://localhost:3001
   - service: http_status:404
 ```
 
-### 4.5 Add DNS route
+If your old config still points at the previous domain, update both hostnames before restarting `cloudflared`.
+
+### 4.4 Add DNS route
 ```bash
 cloudflared tunnel route dns liars-dice liarsdice.yourdomain.com
+cloudflared tunnel route dns liars-dice liarsdice-api.yourdomain.com
 ```
 
-### 4.6 Run the tunnel (as a background service)
+If `cloudflared tunnel route dns` is unavailable because the local machine does not have a working
+`cert.pem` for the correct zone, add the DNS records manually in Cloudflare:
+
+- `liarsdice` -> `<TUNNEL_UUID>.cfargotunnel.com` as a proxied `CNAME`
+- `liarsdice-api` -> `<TUNNEL_UUID>.cfargotunnel.com` as a proxied `CNAME`
+
+The hostname routing still happens in `~/.cloudflared/config.yml`, so both public hostnames can point
+to the same tunnel target.
+
+### 4.5 Run the tunnel
+
+If you are using the repo's checked-in launchd setup, restart the tunnel with:
 ```bash
-brew services start cloudflared
+./scripts/manage_services.sh restart
 ```
 
-The tunnel now runs automatically at Mac Mini startup.
+That path uses [scripts/run_tunnel.sh](/Users/thurston/Workspace/Liar-s-Dice/scripts/run_tunnel.sh:1), which runs:
+
+```bash
+cloudflared tunnel run
+```
+
+You do not need `sudo cloudflared service install` for the current repo-managed setup.
 
 ---
 
@@ -175,7 +255,9 @@ sudo ./svc.sh start
 ### 5.3 The workflow file is already in the repo
 `.github/workflows/deploy.yml` uses `runs-on: self-hosted`, so every push to `main`
 will automatically trigger a deploy on your Mac Mini. The workflow checks out the repo,
-installs dependencies, builds the app, and restarts PM2.
+installs dependencies, builds the app, and restarts the local services. If the new
+`launchd` plists are installed it uses `./scripts/manage_services.sh restart`;
+otherwise it falls back to PM2.
 
 No repo-specific GitHub secrets are required for deployment.
 
@@ -184,11 +266,12 @@ No repo-specific GitHub secrets are required for deployment.
 ## Summary Checklist
 
 - [ ] Clone repo on Mac Mini
-- [ ] Install Node, PM2, cloudflared
+- [ ] Install Node and cloudflared
 - [ ] Set `VITE_SOCKET_URL` to your production domain
 - [ ] Update CORS to allow your production domain
-- [ ] Build and start server with PM2
+- [ ] Build the app
 - [ ] Set up Cloudflare domain and tunnel
+- [ ] Copy current plist files into `~/Library/LaunchAgents` if using the repo launchd setup
 - [ ] Register the Mac Mini as a self-hosted GitHub runner
 - [ ] Push to `main` and verify the deploy workflow succeeds
 
@@ -196,6 +279,8 @@ No repo-specific GitHub secrets are required for deployment.
 
 ## Notes
 
-- The app only needs to be running when you want to play. Use `pm2 stop liars-dice` to stop it and `pm2 start liars-dice` to start it again.
-- The Cloudflare Tunnel runs as a system service and starts automatically on boot — you only need Node/PM2 running for the app itself to work.
-- WebSockets work natively through Cloudflare Tunnels with no extra config.
+- The current repo-managed runtime uses `launchd`, not PM2, as the primary service manager.
+- Restart all local app services with `./scripts/manage_services.sh restart`.
+- Check local service state with `./scripts/manage_services.sh status`.
+- The Cloudflare Tunnel runs through the checked-in `launchd` agent and starts automatically after login.
+- WebSockets work natively through Cloudflare Tunnel with no extra config.

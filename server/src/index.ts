@@ -8,6 +8,20 @@ import type { ClientToServerEvents, ServerToClientEvents } from '@liars-dice/sha
 const app = express();
 const httpServer = createServer(app);
 
+const configuredOrigins = (process.env.ALLOWED_ORIGINS ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+const defaultAllowedOrigins = [
+    'https://app.mitoful.com',
+    'https://api.mitoful.com',
+    'https://liarsdice.thepregames.com',
+    'https://liarsdice-api.thepregames.com',
+];
+
+const allowedOrigins = new Set([...defaultAllowedOrigins, ...configuredOrigins]);
+
 // Configure CORS for development to allow local network access
 const corsOptions = {
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
@@ -19,8 +33,7 @@ const corsOptions = {
             origin.startsWith('http://127.0.0.1') ||
             origin.startsWith('http://192.168.') ||
             origin.startsWith('http://10.') ||
-            origin === 'https://app.mitoful.com' ||
-            origin === 'https://api.mitoful.com') {
+            allowedOrigins.has(origin)) {
             return callback(null, true);
         }
 

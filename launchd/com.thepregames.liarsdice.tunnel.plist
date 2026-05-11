@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.mitoful.liarsdice.tunnel</string>
+  <string>com.thepregames.liarsdice.tunnel</string>
   <key>ProgramArguments</key>
   <array>
     <string>/Users/thurston/Workspace/Liar-s-Dice/scripts/run_tunnel.sh</string>
