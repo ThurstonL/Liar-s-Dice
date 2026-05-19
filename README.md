@@ -23,8 +23,8 @@ To start both the frontend (client) and backend (server) in development mode sim
 npm run dev
 ```
 
-- The client will typically be running on [http://localhost:5173](http://localhost:5173) (or similar, depending on your Vite/React setup).
-- The server will be running on its assigned port (often 3000 or similar).
+- The client runs on [http://localhost:5173](http://localhost:5173).
+- The server runs on [http://localhost:3001](http://localhost:3001).
 
 ## Building for Production
 

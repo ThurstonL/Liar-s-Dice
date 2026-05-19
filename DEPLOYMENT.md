@@ -36,8 +36,7 @@ If you are moving the app from an old domain to a new one, update all four place
 4. `~/Library/LaunchAgents`
    Reinstall the checked-in plist files if their filenames or labels changed
 
-The current repo includes `scripts/manage_services.sh install` to copy the repo's
-plist files into `~/Library/LaunchAgents`.
+Service management is handled centrally from `thepregames-home/scripts/manage_services.sh`.
 
 Important: `~/.cloudflared/config.yml` is machine-local config on the Mac Mini.
 It is not read by GitHub Actions and should not be treated as repo config that needs
@@ -84,14 +83,11 @@ The repo's current deployment path uses macOS `launchd` for:
 - backend Node server on port `3001`
 - `cloudflared tunnel run`
 
-Install the checked-in plist files:
+Install and start all services from `thepregames-home`:
 
 ```bash
-./scripts/manage_services.sh install
-launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.thepregames.liarsdice.backend.plist"
-launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.thepregames.liarsdice.frontend.plist"
-launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.thepregames.liarsdice.tunnel.plist"
-./scripts/manage_services.sh restart
+cd /Users/thurston/Workspace/the-pregames/thepregames-home
+./scripts/manage_services.sh bootstrap liarsdice
 ```
 
 If you are migrating from the old `com.mitoful.*` labels, unload those first:
@@ -126,7 +122,7 @@ app.get('*', (_req, res) => {
 Then rebuild:
 ```bash
 npm run build
-./scripts/manage_services.sh restart
+/Users/thurston/Workspace/the-pregames/thepregames-home/scripts/manage_services.sh restart
 ```
 
 ### Option B: Deploy client to a free static host (e.g. Cloudflare Pages)
@@ -216,16 +212,10 @@ to the same tunnel target.
 
 If you are using the repo's checked-in launchd setup, restart the tunnel with:
 ```bash
-./scripts/manage_services.sh restart
+/Users/thurston/Workspace/the-pregames/thepregames-home/scripts/manage_services.sh restart
 ```
 
-That path uses [scripts/run_tunnel.sh](/Users/thurston/Workspace/Liar-s-Dice/scripts/run_tunnel.sh:1), which runs:
-
-```bash
-cloudflared tunnel run
-```
-
-You do not need `sudo cloudflared service install` for the current repo-managed setup.
+The tunnel is managed by `thepregames-home` and runs `cloudflared tunnel run`. You do not need `sudo cloudflared service install`.
 
 ---
 
@@ -256,7 +246,7 @@ sudo ./svc.sh start
 `.github/workflows/deploy.yml` uses `runs-on: self-hosted`, so every push to `main`
 will automatically trigger a deploy on your Mac Mini. The workflow checks out the repo,
 installs dependencies, builds the app, and restarts the local services. If the new
-`launchd` plists are installed it uses `./scripts/manage_services.sh restart`;
+`launchd` plists are installed it uses `/Users/thurston/Workspace/the-pregames/thepregames-home/scripts/manage_services.sh restart`;
 otherwise it falls back to PM2.
 
 No repo-specific GitHub secrets are required for deployment.
@@ -271,7 +261,7 @@ No repo-specific GitHub secrets are required for deployment.
 - [ ] Update CORS to allow your production domain
 - [ ] Build the app
 - [ ] Set up Cloudflare domain and tunnel
-- [ ] Copy current plist files into `~/Library/LaunchAgents` if using the repo launchd setup
+- [ ] Run `thepregames-home/scripts/manage_services.sh bootstrap liarsdice`
 - [ ] Register the Mac Mini as a self-hosted GitHub runner
 - [ ] Push to `main` and verify the deploy workflow succeeds
 
@@ -280,7 +270,7 @@ No repo-specific GitHub secrets are required for deployment.
 ## Notes
 
 - The current repo-managed runtime uses `launchd`, not PM2, as the primary service manager.
-- Restart all local app services with `./scripts/manage_services.sh restart`.
-- Check local service state with `./scripts/manage_services.sh status`.
+- Restart all local app services with `thepregames-home/scripts/manage_services.sh restart liarsdice`.
+- Check local service state with `thepregames-home/scripts/manage_services.sh status`.
 - The Cloudflare Tunnel runs through the checked-in `launchd` agent and starts automatically after login.
 - WebSockets work natively through Cloudflare Tunnel with no extra config.
