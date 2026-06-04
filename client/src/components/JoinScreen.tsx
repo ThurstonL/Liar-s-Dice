@@ -23,6 +23,14 @@ export function JoinScreen() {
 
     return (
         <div className="min-h-screen flex items-center justify-center p-4">
+            {mode === 'select' && (
+                <a
+                    href="https://thepregames.com"
+                    className="btn-secondary fixed top-4 left-4 z-10 !px-3 !py-1.5 !text-sm"
+                >
+                    ← thepregames.com
+                </a>
+            )}
             <div className="glass-card p-8 w-full max-w-md">
                 {/* Header */}
                 <div className="text-center mb-8">
